@@ -138,7 +138,7 @@ public enum Wallpaper {
 		let appSupportDirectory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
 		let dbURL = appSupportDirectory.appendingPathComponent("Dock/desktoppicture.db", isDirectory: false)
 
-		let db = try Connection(dbURL.path)
+		let db = try Connection(dbURL.path, readonly: true)
 		return try resolveDirectoryWallpaper(url, displayUUID: screen.displayUUID, database: db)
 	}
 
@@ -193,10 +193,12 @@ public enum Wallpaper {
 	*/
 	private static func forceRefreshIfNeeded(_ image: URL, screen: Screen) throws {
 		var shouldSleep = false
-		let currentImages = try get(screen: screen)
+		let currentImages = try screen.nsScreens.map { nsScreen in
+			(nsScreen, try get(screen: .nsScreens([nsScreen])).first)
+		}
 
-		for (index, nsScreen) in screen.nsScreens.enumerated() {
-			if image == currentImages[index] {
+		for (nsScreen, currentImage) in currentImages {
+			if let currentImage, image == currentImage {
 				shouldSleep = true
 				try NSWorkspace.shared.setDesktopImageURL(URL(fileURLWithPath: ""), for: nsScreen, options: [:])
 			}
